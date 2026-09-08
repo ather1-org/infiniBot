@@ -91,7 +91,7 @@ let lastNowPlayingArt = null;
 
 announcementPlayer.on("idle", () => {
     if (activeAnnouncementFile) {
-        fs.promises.unlink(activeAnnouncementFile).catch(() => {});
+        fs.promises.unlink(activeAnnouncementFile).catch(() => { });
         activeAnnouncementFile = null;
     }
 });
@@ -99,7 +99,7 @@ announcementPlayer.on("idle", () => {
 announcementPlayer.on("error", (error) => {
     console.error("Voice announcement failed:", error);
     if (activeAnnouncementFile) {
-        fs.promises.unlink(activeAnnouncementFile).catch(() => {});
+        fs.promises.unlink(activeAnnouncementFile).catch(() => { });
         activeAnnouncementFile = null;
     }
 });
@@ -255,96 +255,6 @@ function createAnnouncementAudio(text) {
         console.warn("No supported TTS engine found (powershell, pico2wave, espeak, or say). Skipping announcement.");
         finish(false);
     });
-}
-
-async function announceJoin(guild, member) {
-    const voiceConnection = discordVoice.getVoiceConnection(guild.id) || connection;
-
-    if (!voiceConnection) {
-        return;
-    }
-
-    try {
-        const audioFile = await createAnnouncementAudio(`${member.displayName} joined the call`);
-        if (!audioFile) {
-            // TTS not available or failed; just skip the announcement
-            return;
-        }
-
-        // If a radio is currently playing, try to mix the announcement with the live stream using ffmpeg so music continues.
-        const channel = guild.channels.cache.get(INFINICALL);
-        const station = currentRadioStation;
-
-        const playedMixed = station && commandExistsSync("ffmpeg") && (await (async () => {
-            try {
-                // spawn ffmpeg to mix live stream and announcement file
-                const spawn = require("child_process").spawn;
-                const ff = spawn("ffmpeg", [
-                    "-i", station.stream_url,
-                    "-i", audioFile,
-                    "-filter_complex", "amix=inputs=2:duration=shortest:dropout_transition=0",
-                    "-f", "wav",
-                    "pipe:1",
-                ], { windowsHide: true });
-
-                ff.once("error", (err) => console.warn("ffmpeg spawn error:", err && err.message ? err.message : err));
-
-                const resource = discordVoice.createAudioResource(ff.stdout, {
-                    inputType: discordVoice.StreamType.Arbitrary,
-                    inlineVolume: true,
-                });
-                resource.volume?.setVolume(currentRadioVolume / 100);
-
-                voiceConnection.subscribe(radioPlayer);
-                radioPlayer.play(resource);
-
-                // When mixed playback ends, restart normal radio playback
-                const onIdle = async () => {
-                    radioPlayer.removeListener("idle", onIdle);
-                    try {
-                        if (channel && station) {
-                            await playAzuraCastStation(channel, station.name);
-                        }
-                    } catch (e) {
-                        console.warn("Failed to resume radio after announcement:", e && e.message ? e.message : e);
-                    }
-                };
-
-                radioPlayer.on("idle", onIdle);
-
-                return true;
-            } catch (e) {
-                return false;
-            }
-        })());
-
-        if (playedMixed) {
-            // mixed and played successfully
-            activeAnnouncementFile = audioFile;
-            return;
-        }
-
-        // Fallback: play announcement alone (will temporarily replace the subscription)
-        voiceConnection.subscribe(announcementPlayer);
-        activeAnnouncementFile = audioFile;
-        const audioResource = discordVoice.createAudioResource(fs.createReadStream(audioFile));
-        const wasPlaying = radioPlayer.state.status === "playing";
-
-        announcementPlayer.play(audioResource);
-
-        if (wasPlaying && currentRadioStation) {
-            announcementPlayer.once("idle", async () => {
-                try {
-                    const channel = guild.channels.cache.get(INFINICALL);
-                    if (channel) await playAzuraCastStation(channel, currentRadioStation.name);
-                } catch (e) {
-                    console.warn("Failed to resume radio after announcement:", e && e.message ? e.message : e);
-                }
-            });
-        }
-    } catch (error) {
-        console.error("Failed to create voice announcement:", error);
-    }
 }
 
 function normalizeAzuraCastServer(rawServer) {
@@ -664,15 +574,15 @@ async function playAzuraCastStation(channel, stationName, serverName) {
                     console.log(`Set presence: ${station.name} (STREAMING) -> ${stationUrl}`);
                     try {
                         await client.user.setPresence({ activities: [{ name: station.name, type: ActivityType.Streaming, url: stationUrl }], status: "online" });
-                    } catch (e) {}
-                            try { await updateNowPlayingPresence(station.name, stationUrl); } catch (e) {}
+                    } catch (e) { }
+                    try { await updateNowPlayingPresence(station.name, stationUrl); } catch (e) { }
                 } else {
                     await client.user.setActivity(`${station.name}`, { type: ActivityType.Listening });
                     console.log(`Set presence: ${station.name} (LISTENING)`);
                     try {
                         await client.user.setPresence({ activities: [{ name: station.name, type: ActivityType.Listening }], status: "online" });
-                    } catch (e) {}
-                            try { await updateNowPlayingPresence(station.name, null); } catch (e) {}
+                    } catch (e) { }
+                    try { await updateNowPlayingPresence(station.name, null); } catch (e) { }
                 }
             }
         } catch (e) {
@@ -729,7 +639,7 @@ async function playAzuraCastStation(channel, stationName, serverName) {
 
                 // try to extract artwork from payload
                 let art = song?.art || song?.art_url || song?.image || song?.thumbnail || payload.now_playing?.song?.art || payload.now_playing?.song?.art_url || payload.now_playing?.source?.image || null;
-                 console.log(`NowPlaying artwork URL: ${art || 'none'}`);
+                console.log(`NowPlaying artwork URL: ${art || 'none'}`);
                 // post or edit a now-playing embed in the configured channel (if set)
                 if (NOWPLAY_CHANNEL && client.user) {
                     try {
@@ -764,15 +674,15 @@ async function playAzuraCastStation(channel, stationName, serverName) {
                         console.log(`Updated now-playing presence: ${display} (STREAMING) -> ${stationUrl}`);
                         try {
                             await client.user.setPresence({ activities: [{ name: display, type: ActivityType.Streaming, url: stationUrl }], status: "online" });
-                        } catch (e) {}
-                            try { await updateNowPlayingPresence(display, stationUrl); } catch (e) {}
+                        } catch (e) { }
+                        try { await updateNowPlayingPresence(display, stationUrl); } catch (e) { }
                     } else {
                         await client.user.setActivity(display, { type: ActivityType.Listening });
                         console.log(`Updated now-playing presence: ${display} (LISTENING)`);
                         try {
                             await client.user.setPresence({ activities: [{ name: display, type: ActivityType.Listening }], status: "online" });
-                        } catch (e) {}
-                            try { await updateNowPlayingPresence(display, null); } catch (e) {}
+                        } catch (e) { }
+                        try { await updateNowPlayingPresence(display, null); } catch (e) { }
                     }
                 }
                 // Attempt to update avatar to song art (if enabled). Force update when the song display changes.
@@ -828,11 +738,11 @@ async function stopRadio() {
     }
     try {
         if (client.user) await client.user.setActivity(null);
-    } catch (e) {}
+    } catch (e) { }
     // restore original avatar if we changed it
     try {
         await restoreOriginalAvatar();
-    } catch (e) {}
+    } catch (e) { }
 }
 
 function buildStationsSelectMenu(stations, serverName) {
@@ -937,17 +847,17 @@ async function registerSlashCommands() {
         try {
             const listed = await rest.get(Routes.applicationGuildCommands(appId, GUILD_ID));
             console.log("COMMAND METADATA:");
-console.log(
-    listed.map(c => ({
-        name: c.name,
-        id: c.id,
-        type: c.type,
-        default_member_permissions: c.default_member_permissions,
-        dm_permission: c.dm_permission,
-        integration_types: c.integration_types,
-        contexts: c.contexts
-    }))
-);
+            console.log(
+                listed.map(c => ({
+                    name: c.name,
+                    id: c.id,
+                    type: c.type,
+                    default_member_permissions: c.default_member_permissions,
+                    dm_permission: c.dm_permission,
+                    integration_types: c.integration_types,
+                    contexts: c.contexts
+                }))
+            );
         } catch (e) {
             console.warn("registerSlashCommands: failed to list registered commands:", e && e.message ? e.message : e);
         }
@@ -1035,7 +945,7 @@ function getStationWebUrl(station, server) {
                     return `https://${slug}.${base}`;
                 }
                 // fallback to server base url
-            } catch (e) {}
+            } catch (e) { }
         }
 
         if (server && server.base_url) return server.base_url;
@@ -1183,60 +1093,6 @@ async function setSongAvatarImmediate(imageUrl) {
     }
 }
 
-async function setSongAvatar(imageUrl) {
-    if (!ENABLE_SONG_AVATAR) {
-        console.log("setSongAvatar: feature disabled");
-        return false;
-    }
-
-    if (!imageUrl) {
-        console.log("setSongAvatar: no imageUrl provided");
-        return false;
-    }
-
-    if (!client.user) {
-        console.log("setSongAvatar: client.user not ready");
-        return false;
-    }
-
-    const now = Date.now();
-    if (now - lastAvatarChange < AVATAR_CHANGE_COOLDOWN_MS) {
-        console.log(`setSongAvatar: cooldown in effect (${now - lastAvatarChange}ms < ${AVATAR_CHANGE_COOLDOWN_MS}ms)`);
-        return false;
-    }
-
-    console.log(`setSongAvatar: attempting to fetch image ${imageUrl}`);
-    const buf = await fetchAndMaybeResize(imageUrl, MAX_AVATAR_BYTES);
-    if (!buf) {
-        console.log("setSongAvatar: failed to fetch or image rejected");
-        return false;
-    }
-
-    try {
-        // store original avatar if not stored
-        if (!originalAvatarBuffer) {
-            try {
-                const origUrl = client.user.displayAvatarURL({ format: "png", size: 256 });
-                console.log(`setSongAvatar: fetching original avatar from ${origUrl}`);
-                const origBuf = await fetchAndMaybeResize(origUrl, MAX_AVATAR_BYTES);
-                if (origBuf) {
-                    originalAvatarBuffer = origBuf;
-                    console.log(`setSongAvatar: stored original avatar (${origBuf.length} bytes)`);
-                }
-            } catch (e) {
-                console.warn("setSongAvatar: failed fetching original avatar:", e && e.message ? e.message : e);
-            }
-        }
-
-        await client.user.setAvatar(buf);
-        lastAvatarChange = Date.now();
-        console.log("Changed bot avatar to song art");
-        return true;
-    } catch (e) {
-        console.warn("Failed to set song avatar:", e && e.message ? e.message : e);
-        return false;
-    }
-}
 
 async function restoreOriginalAvatar() {
     if (!ENABLE_SONG_AVATAR || !originalAvatarBuffer || !client.user) return false;
@@ -1250,75 +1106,7 @@ async function restoreOriginalAvatar() {
     }
 }
 
-function checkStatus() {
-    const guild = client.guilds.cache.get(GUILD_ID);
-    const channel = guild?.channels.cache.get(INFINICALL);
-
-    if (!guild || !channel) {
-        return;
-    }
-
-    const humanCount = getHumanMemberCount(channel);
-    const existingConnection = discordVoice.getVoiceConnection(guild.id);
-
-    connected = Boolean(existingConnection);
-
-    if (channel.isVoiceBased()) {
-        console.log("Voice Size:" + humanCount);
-    }
-
-    console.log("Connected: " + connected);
-
-    if (humanCount <= MAX_CALL_SIZE) {
-        if (!existingConnection) {
-            connection = discordVoice.joinVoiceChannel({
-                channelId: channel.id,
-                guildId: guild.id,
-                adapterCreator: guild.voiceAdapterCreator,
-                selfDeaf: true,
-            });
-            connected = true;
-        }
-
-        if (disconnectTimeout) {
-            clearTimeout(disconnectTimeout);
-            disconnectTimeout = null;
-        }
-    }
-
-    if (humanCount > MAX_CALL_SIZE) {
-        // check per-guild override setting
-        const keepInCall = getGuildSetting(guild.id, "stayInCall", false);
-        if (keepInCall) {
-            console.log(`Guild ${guild.id} setting stayInCall=true; will not disconnect even though humanCount=${humanCount}`);
-        } else {
-            if (disconnectTimeout) {
-                clearTimeout(disconnectTimeout);
-            }
-
-            if (existingConnection) {
-                disconnectTimeout = setTimeout(() => {
-                    const latestConnection = discordVoice.getVoiceConnection(guild.id);
-                    const latestGuild = client.guilds.cache.get(GUILD_ID);
-                    const latestChannel = latestGuild?.channels.cache.get(INFINICALL);
-                    const latestHumanCount = latestChannel ? getHumanMemberCount(latestChannel) : 0;
-
-                    if (latestConnection && latestHumanCount > MAX_CALL_SIZE) {
-                        connected = false;
-                        latestConnection.destroy();
-                        console.log("Disconnected from voice channel due to too many members.");
-                    }
-                    disconnectTimeout = null;
-                }, 30000);
-            }
-        }
-    } else if (disconnectTimeout) {
-        clearTimeout(disconnectTimeout);
-        disconnectTimeout = null;
-    }
-}
-
-client.once("ready", async () => {
+client.once("clientReady", async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
     // load persistent settings
@@ -1349,235 +1137,6 @@ client.once("ready", async () => {
     }
 
     checkStatus();
-});
-
-client.on("interactionCreate", async (interaction) => {
-    console.log(`Received interaction: type=${interaction.type} command=${interaction.commandName || 'n/a'} user=${interaction.user?.id}`);
-    if (interaction.isAutocomplete && interaction.isAutocomplete()) {
-        try {
-            const focused = interaction.options.getFocused();
-            const servers = parseAzuraCastServers().map((s) => s.name || "");
-            const filtered = servers
-                .filter((name) => name.toLowerCase().includes(String(focused || "").toLowerCase()))
-                .slice(0, 25)
-                .map((name) => ({ name, value: name }));
-
-            await interaction.respond(filtered);
-        } catch (e) {
-            await interaction.respond([]);
-        }
-
-        return;
-    }
-
-    if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === "server-select") {
-            const serverName = interaction.values[0];
-            const stations = await getAvailableStations(serverName);
-
-            if (!stations.length) {
-                await interaction.update({
-                    content: `No stations were found on ${serverName}.`,
-                    components: [],
-                });
-                return;
-            }
-
-            const stationMenu = buildStationsSelectMenu(stations, serverName);
-            await interaction.update({
-                content: `Choose a station from ${serverName}:`,
-                components: [stationMenu],
-            });
-            return;
-        }
-
-        if (interaction.customId.startsWith("station-select:")) {
-            const [serverName, stationName] = interaction.values[0].split("|");
-            if (!interaction.member.voice?.channel) {
-                await interaction.update({
-                    content: "You need to be in a voice channel to play a radio station.",
-                    components: [],
-                });
-                return;
-            }
-
-            const result = await playAzuraCastStation(interaction.member.voice.channel, stationName, serverName);
-
-            if (!result.ok) {
-                await interaction.update({
-                    content: result.message,
-                    components: [],
-                });
-                return;
-            }
-
-            await interaction.update({
-                content: `Now playing ${result.station.name} from ${result.server ? result.server.name : "the selected server"} in ${interaction.member.voice.channel.name}.`,
-                components: [],
-            });
-            return;
-        }
-    }
-
-    if (!interaction.isChatInputCommand()) {
-        return;
-    }
-
-    // settings command
-    if (interaction.commandName === "settings") {
-        const adminId = process.env.ADMIN_USER_ID;
-        const memberIsAdmin = interaction.memberPermissions && interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild);
-        if (adminId && String(interaction.user.id) !== String(adminId) && !memberIsAdmin) {
-            await interaction.reply({ content: "You are not allowed to change server settings.", ephemeral: true });
-            return;
-        }
-
-        const sub = interaction.options.getSubcommand();
-        if (sub === "show") {
-            const guildId = interaction.guildId || GUILD_ID;
-            const gsettings = settings[guildId] || {};
-            await interaction.reply({ content: "Current settings:\n```json\n" + JSON.stringify(gsettings, null, 2) + "\n```", ephemeral: true });
-            return;
-        }
-
-        if (sub === "stay_in_call") {
-            const value = interaction.options.getBoolean("value");
-            const guildId = interaction.guildId || GUILD_ID;
-            await setGuildSetting(guildId, "stayInCall", Boolean(value));
-            await interaction.reply({ content: `Updated stayInCall=${value} for this guild.`, ephemeral: true });
-            return;
-        }
-
-        if (sub === "volume") {
-            const percent = interaction.options.getInteger("percent");
-            const guildId = interaction.guildId || GUILD_ID;
-            const safe = clampVolumePercent(percent);
-            await setGuildSetting(guildId, "defaultVolume", safe);
-            await interaction.reply({ content: `Updated defaultVolume=${safe}% for this guild. This will be applied when the bot joins or next station is played.`, ephemeral: true });
-            return;
-        }
-    }
-
-    if (interaction.commandName === "stations") {
-        const serverName = interaction.options.getString("server");
-        const servers = parseAzuraCastServers();
-
-        if (servers.length > 1 && !serverName) {
-            await interaction.reply({
-                content: "Choose an AzuraCast server:",
-                components: [buildServerSelectMenu()],
-                ephemeral: true,
-            });
-            return;
-        }
-
-        const effectiveServerName = serverName || (servers.length === 1 ? servers[0].name : null);
-        const stationServer = getAzuraCastServer(effectiveServerName);
-        const stations = await getAvailableStations(effectiveServerName);
-
-        if (!stations.length) {
-            await interaction.reply({ content: `No AzuraCast stations are configured or reachable right now on ${stationServer ? stationServer.name : "the selected server"}.`, ephemeral: true });
-            return;
-        }
-
-        await interaction.reply({
-            content: `Choose a station from ${stationServer ? stationServer.name : "the selected server"}:`,
-            components: [buildStationsSelectMenu(stations, effectiveServerName || (stationServer ? stationServer.name : "Selected server"))],
-            ephemeral: true,
-        });
-        return;
-    }
-
-    if (interaction.commandName === "playstation") {
-        const stationName = interaction.options.getString("station");
-        const serverName = interaction.options.getString("server");
-
-        if (!interaction.member.voice?.channel) {
-            await interaction.reply({ content: "You need to be in a voice channel to use this command.", ephemeral: true });
-            return;
-        }
-
-        const servers = parseAzuraCastServers();
-        if (servers.length > 1 && !serverName) {
-            await interaction.reply({
-                content: "Choose an AzuraCast server to play from:",
-                components: [buildServerSelectMenu()],
-                ephemeral: true,
-            });
-            return;
-        }
-
-        const result = await playAzuraCastStation(interaction.member.voice.channel, stationName, serverName);
-
-        if (!result.ok) {
-            await interaction.reply({ content: result.message, ephemeral: true });
-            return;
-        }
-
-        const serverLabel = result.server ? result.server.name : "configured server";
-        await interaction.reply({ content: `Now playing ${result.station.name} from ${serverLabel} in ${interaction.member.voice.channel.name}.` });
-        return;
-    }
-
-    if (interaction.commandName === "nowplaying-debug") {
-        const now = await fetchCurrentNowPlayingText();
-        const info = {
-            currentRadioStation: currentRadioStation ? { id: currentRadioStation.id, name: currentRadioStation.name, stream_url: currentRadioStation.stream_url } : null,
-            currentRadioServer: currentRadioServer ? { name: currentRadioServer.name, base_url: currentRadioServer.base_url } : null,
-            nowPlaying: now,
-            nowPlayingInterval: Boolean(nowPlayingInterval),
-        };
-        await interaction.reply({ content: "```json\n" + JSON.stringify(info, null, 2) + "\n```", ephemeral: true });
-        return;
-    }
-
-    if (interaction.commandName === "avatar-test") {
-        const adminId = process.env.ADMIN_USER_ID;
-        if (adminId && String(interaction.user.id) !== String(adminId)) {
-            await interaction.reply({ content: "You are not allowed to run this command.", ephemeral: true });
-            return;
-        }
-
-        const url = interaction.options.getString("url");
-        await interaction.deferReply({ ephemeral: true });
-        const buf = await fetchImageBuffer(url);
-        if (!buf) {
-            await interaction.editReply({ content: "Failed to fetch image or image too large." });
-            return;
-        }
-
-        try {
-            await client.user.setAvatar(buf);
-            lastAvatarChange = Date.now();
-            await interaction.editReply({ content: "Avatar updated successfully." });
-        } catch (e) {
-            await interaction.editReply({ content: `Failed to set avatar: ${e && e.message ? e.message : e}` });
-        }
-
-        return;
-    }
-
-    if (interaction.commandName === "volume") {
-        const percent = interaction.options.getInteger("percent");
-        const finalVolume = setRadioVolume(percent);
-        await interaction.reply({ content: `Radio volume set to ${finalVolume}%`, ephemeral: true });
-        return;
-    }
-
-    if (interaction.commandName === "stopradio") {
-        await stopRadio();
-        await interaction.reply({ content: "The radio stream has been stopped." });
-    }
-});
-
-client.on("voiceStateUpdate", (oldState, newState) => {
-    if (oldState.channelId !== newState.channelId) {
-        checkStatus();
-    }
-
-    if (newState.channelId === INFINICALL && oldState.channelId !== INFINICALL && !newState.member.user.bot) {
-        announceJoin(newState.guild, newState.member);
-    }
 });
 
 process.on("SIGINT", () => {
