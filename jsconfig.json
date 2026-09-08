@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "noImplicitAny": false,
+        "strict": false,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "target": "ES2022"
+    },
+    "exclude": ["node_modules"]
+}
