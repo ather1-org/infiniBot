@@ -4,6 +4,11 @@ const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
 // creates in data/db.sqlite
 
+const dataDir = path.join(__dirname, "../../data");
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
 const db = new sqlite3.Database(path.join(__dirname, "../../data/db.sqlite"), (err) => {
     if (err) {
         console.error("Failed to connect to database:", err.message);
