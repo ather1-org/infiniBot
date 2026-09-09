@@ -55,8 +55,14 @@ function loadCommands() {
                 throw new Error(`${file} must export data and an execute function`);
             }
 
+            // if disabled is true, skip this command, mainly for azuracast
+            if (command.disabled) {
+                return null;
+            }
+
             return { ...command, file };
-        });
+        })
+        .filter(Boolean);
 
     validateSelectMenuRegexes(commands);
     return commands;

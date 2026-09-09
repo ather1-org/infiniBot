@@ -1,5 +1,6 @@
 const { ChannelType, PermissionFlagsBits, SlashCommandBuilder, MessageFlags } = require("discord.js");
 const { Settings } = require("../utils/db/index.js");
+const { azuracastAvailable } = require("../utils/azura.js");
 
 function clampVolumePercent(value) {
     const numeric = Number(value);
@@ -10,47 +11,51 @@ function clampVolumePercent(value) {
     return Math.min(100, Math.max(0, numeric));
 }
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName("settings")
-        .setDescription("Server settings for InfiniCall bot")
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-        .addSubcommand((sub) => sub
-            .setName("show")
-            .setDescription("Show current guild settings"))
-        .addSubcommand((sub) => sub
-            .setName("stay_in_call")
-            .setDescription("Keep the bot in the call even if member count is over the configured max")
-            .addBooleanOption((option) => option
-                .setName("value")
-                .setDescription("true to keep in call, false to allow disconnect")
-                .setRequired(true)))
-        .addSubcommand((sub) => sub
-            .setName("volume")
-            .setDescription("Set the default radio volume for this server (applied when joining)")
-            .addIntegerOption((option) => option
-                .setName("percent")
-                .setDescription("Volume percent from 0 to 100")
-                .setRequired(true)
-                .setMinValue(0)
-                .setMaxValue(100)))
-        .addSubcommand((sub) => sub
+const data = new SlashCommandBuilder()
+    .setName("settings")
+    .setDescription("Server settings for InfiniCall bot")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addSubcommand((sub) => sub
+        .setName("show")
+        .setDescription("Show current guild settings"))
+    .addSubcommand((sub) => sub
+        .setName("stay_in_call")
+        .setDescription("Keep the bot in the call even if member count is over the configured max")
+        .addBooleanOption((option) => option
+            .setName("value")
+            .setDescription("true to keep in call, false to allow disconnect")
+            .setRequired(true)))
+    .addSubcommand((sub) => sub
+        .setName("limit")
+        .setDescription("Set the max number of users in a call before the bot leaves (0 = no limit)")
+        .addIntegerOption((option) => option
             .setName("limit")
-            .setDescription("Set the max number of users in a call before the bot leaves (0 = no limit)")
-            .addIntegerOption((option) => option
-                .setName("limit")
-                .setDescription("Max number of users in call before bot leaves (0 = no limit)")
-                .setRequired(true)
-                .setMinValue(0)))
-        .addSubcommand((sub) => sub
+            .setDescription("Max number of users in call before bot leaves (0 = no limit)")
+            .setRequired(true)
+            .setMinValue(0)))
+    .addSubcommand((sub) => sub
+        .setName("channel")
+        .setDescription("Select a voice channel accessible to the bot")
+        .addChannelOption((option) => option
             .setName("channel")
-            .setDescription("Select a voice channel accessible to the bot")
-            .addChannelOption((option) => option
-                .setName("channel")
-                .setDescription("Voice channel")
-                .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
-                .setRequired(true))),
+            .setDescription("Voice channel")
+            .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+            .setRequired(true)))
 
+if (azuracastAvailable()) {
+    data.addSubcommand((sub) => sub
+        .setName("volume")
+        .setDescription("Set the default radio volume for this server (applied when joining)")
+        .addIntegerOption((option) => option
+            .setName("percent")
+            .setDescription("Volume percent from 0 to 100")
+            .setRequired(true)
+            .setMinValue(0)
+            .setMaxValue(100)))
+}
+
+module.exports = {
+    data,
     async execute(interaction, { caller }) {
         const adminId = process.env.ADMIN_USER_ID;
         const memberIsAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);

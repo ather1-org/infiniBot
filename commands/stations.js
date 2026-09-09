@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, StringSelectMenuBuilder, ActionRowBuilder, MessageFlags } = require("discord.js");
 
-const { parseAzuraCastServers, getAzuraCastServer, getAvailableStations } = require("../utils/azura");
+const { parseAzuraCastServers, getAzuraCastServer, getAvailableStations, azuracastAvailable } = require("../utils/azura");
 
 function buildServerSelectMenu() {
     const servers = parseAzuraCastServers();
@@ -49,6 +49,8 @@ module.exports = {
             .setDescription("Which AzuraCast server to pull stations from")
             .setRequired(false)
             .setAutocomplete(true)),
+
+    disabled: !azuracastAvailable(),
 
     customIdsRegex,
 

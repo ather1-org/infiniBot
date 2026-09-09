@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { azuracastAvailable } = require("../utils/azura");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,6 +11,8 @@ module.exports = {
             .setRequired(true)
             .setMinValue(0)
             .setMaxValue(100)),
+
+    disabled: !azuracastAvailable(),
 
     async execute(interaction, { setRadioVolume }) {
         const percent = interaction.options.getInteger("percent");

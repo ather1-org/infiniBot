@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { azuracastAvailable } = require("../utils/azura");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -13,6 +14,8 @@ module.exports = {
             .setDescription("Which AzuraCast server to use")
             .setRequired(false)
             .setAutocomplete(true)),
+
+    disabled: !azuracastAvailable(),
 
     async execute(interaction, { parseAzuraCastServers, buildServerSelectMenu, playAzuraCastStation }) {
         const stationName = interaction.options.getString("station");

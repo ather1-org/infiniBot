@@ -143,7 +143,6 @@ async function fetchAzuraCastStations(serverConfig) {
     }
 }
 
-
 function parseConfiguredStations() {
     const rawValue = process.env.AZURACAST_STATIONS || "";
     if (!rawValue.trim()) {
@@ -187,7 +186,6 @@ function parseConfiguredStations() {
         .filter(Boolean);
 }
 
-
 async function getAvailableStations(serverName) {
     const configuredStations = parseConfiguredStations();
     if (configuredStations.length) {
@@ -208,6 +206,10 @@ function getSelectedStation() {
     return getSetting("global", "selected_station_id");
 }
 
+function azuracastAvailable() {
+    const servers = parseAzuraCastServers();
+    return servers.length > 0;
+}
 
 module.exports = {
     normalizeAzuraCastServer,
@@ -220,4 +222,5 @@ module.exports = {
 
     selectStation,
     getSelectedStation,
+    azuracastAvailable
 };
