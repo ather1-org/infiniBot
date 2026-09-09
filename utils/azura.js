@@ -18,57 +18,53 @@ function normalizeAzuraCastServer(rawServer) {
     };
 }
 
-
 function parseAzuraCastServers() {
-    const rawValue = process.env.AZURACAST_SERVERS || "";
+    const servers = [];
+    const indexes = new Set();
 
-    if (rawValue.trim()) {
-        try {
-            const parsed = JSON.parse(rawValue);
-            const servers = Array.isArray(parsed) ? parsed : [parsed];
-            return servers.map(normalizeAzuraCastServer).filter(Boolean);
-        } catch (error) {
-            const entries = rawValue
-                .split(/\n|;/)
-                .map((entry) => entry.trim())
-                .filter(Boolean)
-                .map((entry) => {
-                    const parts = entry.split("|").map((part) => part.trim());
-                    if (parts.length >= 2) {
-                        const [name, baseUrl, apiKey] = parts;
-                        return normalizeAzuraCastServer({ name, base_url: baseUrl, api_key: apiKey || "" });
-                    }
+    // Find all numbered AZURACAST_N_* configurations.
+    for (const key of Object.keys(process.env)) {
+        const match = key.match(/^AZURACAST_(\d+)_/);
 
-                    const equalsIndex = entry.indexOf("=");
-                    if (equalsIndex >= 0) {
-                        const name = entry.slice(0, equalsIndex).trim();
-                        const details = entry.slice(equalsIndex + 1).trim();
-                        const [baseUrl, apiKey] = details.split(",").map((part) => part.trim());
-                        return normalizeAzuraCastServer({ name, base_url: baseUrl, api_key: apiKey || "" });
-                    }
-
-                    return null;
-                })
-                .filter(Boolean);
-
-            if (entries.length) {
-                return entries;
-            }
+        if (match) {
+            indexes.add(Number(match[1]));
         }
     }
 
-    const baseUrl = (process.env.AZURACAST_BASE_URL || "").trim().replace(/\/+$/, "");
-    if (!baseUrl) {
-        return [];
+    // Parse numbered servers.
+    for (const i of [...indexes].sort((a, b) => a - b)) {
+        const prefix = `AZURACAST_${i}_`;
+
+        const server = normalizeAzuraCastServer({
+            name: process.env[`${prefix}SERVER_NAME`] || `Server ${i}`,
+            base_url: process.env[`${prefix}BASE_URL`] || "",
+            api_key: process.env[`${prefix}API_KEY`] || "",
+        });
+
+        if (server) {
+            servers.push(server);
+        }
     }
 
-    return [
-        normalizeAzuraCastServer({
+    // Parse unnumbered server.
+    // This works whether it's the only server or alongside numbered servers.
+    const baseUrl = (process.env.AZURACAST_BASE_URL || "")
+        .trim()
+        .replace(/\/+$/, "");
+
+    if (baseUrl) {
+        const server = normalizeAzuraCastServer({
             name: process.env.AZURACAST_SERVER_NAME || "Primary",
             base_url: baseUrl,
             api_key: process.env.AZURACAST_API_KEY || "",
-        }),
-    ].filter(Boolean);
+        });
+
+        if (server) {
+            servers.push(server);
+        }
+    }
+
+    return servers;
 }
 
 function getAzuraCastServer(serverName) {

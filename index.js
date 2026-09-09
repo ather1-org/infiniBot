@@ -63,6 +63,7 @@ client.once("clientReady", async () => {
         console.error("Failed to register slash commands:", error);
     }
 
+
     const calls = await getAllCalls();
 
     for (const call of calls) {
