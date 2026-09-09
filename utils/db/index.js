@@ -23,7 +23,8 @@ db.run(
         song_avatar_url TEXT DEFAULT NULL,
         infinicall_enabled INTEGER DEFAULT 0,
         infinicall_id TEXT DEFAULT NULL,
-        infinicall_limit INTEGER DEFAULT 5
+        infinicall_limit INTEGER DEFAULT 5,
+        infinicall_stay INTEGER DEFAULT 0
     )`,
     (err) => {
         if (err) {
@@ -35,7 +36,7 @@ db.run(
 );
 
 async function validateKey(key) {
-    const validKeys = ["radio_volume", "song_avatar_enabled", "song_avatar_url", "radio_id", "radio_enabled", "infinicall_enabled", "infinicall_id", "infinicall_limit"];
+    const validKeys = ["radio_volume", "song_avatar_enabled", "song_avatar_url", "radio_id", "radio_enabled", "infinicall_enabled", "infinicall_id", "infinicall_limit", "infinicall_stay"];
     if (!validKeys.includes(key)) {
         throw new Error(`Invalid setting key: ${key}`);
     }
@@ -77,6 +78,31 @@ async function setSetting(guildId, settingKey, value) {
     });
 }
 
+async function getAllCalls() {
+    // returns a map of <guildId, {infinicall_id, infinicall_limit, infinicall_stay}>
+    return new Promise((resolve, reject) => {
+        db.all(
+            `SELECT guild_id, infinicall_id, infinicall_limit, infinicall_stay FROM settings`,
+            [],
+            (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    const calls = new Map();
+                    rows.forEach((row) => {
+                        calls.set(row.guild_id, {
+                            infinicall_id: row.infinicall_id,
+                            infinicall_limit: row.infinicall_limit,
+                            infinicall_stay: row.infinicall_stay
+                        });
+                    });
+                    resolve(calls);
+                }
+            }
+        );
+    });
+}
+
 class Settings {
     constructor(guildId) {
         this.guildId = guildId;
@@ -89,11 +115,29 @@ class Settings {
     async set(key, value) {
         await setSetting(this.guildId, key, value);
     }
+
+    async getAll() {
+        return new Promise((resolve, reject) => {
+            db.get(
+                `SELECT * FROM settings WHERE guild_id = ?`,
+                [this.guildId],
+                (err, row) => {
+                    if (err) {
+                        reject(err);
+                    }
+                    else {
+                        resolve(row || {});
+                    }
+                }
+            );
+        });
+    }
 }
 
 module.exports = {
     db,
     getSetting,
     setSetting,
+    getAllCalls,
     Settings
 }

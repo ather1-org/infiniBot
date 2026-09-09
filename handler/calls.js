@@ -44,9 +44,10 @@ class CallHandler {
     // when a radio is present, the bot will not leave call even if the limit is reached, unless the radio is stopped
     // if limit is 5, and theres 5 users in the call, the bot will leave when the 6th user joins after 30 seconds to prevent debouncing
     // if limit is 0, the bot will never leave the call
+    // stayInCall: if true, the bot will stay in the call even if the limit is reached
 
     /** @param {import("discord.js").Channel} channel */
-    addCall(channel, limit = 3, radioPlaying = false) {
+    addCall(channel, { limit = 3, radioPlaying = false, stayInCall = false } = {}) {
         if (!channel || !channel.isVoiceBased() || channel.isDMBased()) {
             throw new Error("Channel is not a valid voice channel");
         }
@@ -69,6 +70,7 @@ class CallHandler {
             channel,
             limit: limit,
             userCount: userCount,
+            stayInCall: stayInCall,
             radioPlaying: radioPlaying,
             connection: null,
         });
@@ -92,7 +94,7 @@ class CallHandler {
     }
 
     /** @param {import("discord.js").Channel} channel */
-    updateCall(channel, limit, radioPlaying) {
+    updateCall(channel, { limit, radioPlaying, stayInCall }) {
         if (!this.calls.has(channel.id)) {
             throw new Error("Call does not exist for this channel, use addCall to create a call");
         }
@@ -105,6 +107,13 @@ class CallHandler {
         if (radioPlaying !== undefined) {
             call.radioPlaying = radioPlaying;
         }
+
+        if (stayInCall !== undefined) {
+            call.stayInCall = stayInCall;
+        }
+
+        // run an update
+        this.eventUpdate(channel);
     }
 
     _scheduleReconcile(call) {
@@ -179,9 +188,9 @@ class CallHandler {
         call.userCount = userCount;
 
         console.log(`Call in channel ${voiceChannel.name} has ${userCount} human members.`);
-        console.log(`Call settings: limit=${call.limit}, radioPlaying=${call.radioPlaying}`);
+        console.log(`Call settings: limit=${call.limit}, radioPlaying=${call.radioPlaying}, stayInCall=${call.stayInCall}`);
         // The bot stays for userCount <= limit and leaves only when userCount > limit.
-        if (call.limit > 0 && userCount > call.limit) {
+        if (call.limit > 0 && userCount > call.limit && !call.radioPlaying && !call.stayInCall) {
             console.log(`Call in channel ${voiceChannel.name} has exceeded the limit of ${call.limit} members. Leaving call.`);
             const connection = getVoiceConnection(voiceChannel.guild.id);
             if (connection) {
@@ -191,13 +200,22 @@ class CallHandler {
             return;
         }
 
-        if (call.limit === 0 || userCount <= call.limit) {
+        if (call.limit === 0 || userCount <= call.limit || call.radioPlaying || call.stayInCall) {
             this._join(call);
         }
     }
 
     _updateEvent(voiceChannel) {
         this.eventUpdate(voiceChannel);
+    }
+
+    selfDestruct() {
+        for (const call of this.calls.values()) {
+            const connection = getVoiceConnection(call.channel.guild.id);
+            if (connection) {
+                connection.destroy();
+            }
+        }
     }
 }
 

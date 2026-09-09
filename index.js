@@ -11,6 +11,7 @@ const {
 } = require("./handler/commands");
 
 const { CallHandler } = require("./handler/calls");
+const { getAllCalls } = require("./utils/db/index.js");
 
 const GUILD_ID = process.env.GUILD_ID || "1406595308275630212";
 const INFINICALL = process.env.INFINICALL || "1427083874776776775";
@@ -62,8 +63,33 @@ client.once("clientReady", async () => {
         console.error("Failed to register slash commands:", error);
     }
 
-    await caller.addCall(client.channels.cache.get(INFINICALL));
+    const calls = await getAllCalls();
+
+    for (const call of calls) {
+        console.log('call', call[1].infinicall_id);
+        const channel = client.channels.cache.get(call[1].infinicall_id);
+        if (!channel || !channel.isVoiceBased() || channel.isDMBased()) {
+            console.warn(`Skipping call for guild ${call[0]}: channel ${call[1].infinicall_id} is not a valid voice channel`);
+            continue;
+        }
+
+        console.log("Starting call for guild", call[0], "channel", call[1].infinicall_id, "limit", call[1].infinicall_limit, "stayInCall", call[1].infinicall_stay);
+
+        caller.addCall(
+            channel,
+            {
+                limit: call[1].infinicall_limit ?? 0,
+                radioPlaying: false,
+                stayInCall: call[1].infinicall_stay ?? false,
+            }
+        );
+    }
 });
 
+process.on("SIGINT", () => {
+    console.log("Received SIGINT. Disconnecting from voice channel...");
+    caller.selfDestruct(); // caboose the bot to leave the voice channel and clean up resources
+    process.exit();
+});
 
 client.login(process.env.TOKEN);
